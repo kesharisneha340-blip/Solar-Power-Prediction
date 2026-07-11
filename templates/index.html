@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Solar Power Prediction</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>☀ Solar Power Generation Prediction</h1>
+
+<form action="/predict" method="POST">
+
+{% for feature in feature_names %}
+
+<div class="input-box">
+
+<label>{{ feature }}</label>
+
+<input
+type="number"
+step="any"
+name="{{ feature }}"
+placeholder="Enter {{ feature }}"
+required>
+
+</div>
+
+{% endfor %}
+
+<button type="submit">
+
+Predict
+
+</button>
+
+</form>
+
+{% if prediction_text %}
+
+<h2>{{ prediction_text }}</h2>
+
+{% endif %}
+
+</div>
+
+</body>
+
+</html>
