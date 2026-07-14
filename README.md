@@ -135,7 +135,7 @@ Among all the trained models, **XGBoost Regressor** achieved the best overall pe
 Clone the repository
 
 ```bash
-git clone https://github.com/your-username/solar-power-prediction.git
+https://github.com/kesharisneha340-blip/Solar-Power-Prediction
 ```
 
 Move into the project folder
