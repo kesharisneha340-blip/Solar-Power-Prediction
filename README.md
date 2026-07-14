@@ -209,6 +209,8 @@ Display Prediction
 
 https://solar-power-prediction-orc1.onrender.com/
 
+
+---
 ## 👩‍💻 Developed By
 
 **Sneha**
