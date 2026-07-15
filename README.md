@@ -205,9 +205,9 @@ Display Prediction
 - Cloud deployment with Docker and CI/CD.
 
 ---
-## Live Demo
+## 🌟 Live Demo
 
-https://solar-power-prediction-orc1.onrender.com/
+https://solar-power-prediction-51d3.onrender.com/
 
 
 ---
