@@ -213,7 +213,7 @@ https://solar-power-prediction-51d3.onrender.com/
 ---
 ## 👩‍💻 Developed By
 
-**Sneha**
+**Sneha and team**
 
 Machine Learning & AI Enthusiast
 
