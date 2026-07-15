@@ -1,59 +1,548 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="en" data-theme="dark">
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Solar Power Prediction</title>
-
+    <title>Solar Power Generation Predictor - Premium Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
 
-<div class="container">
+<div class="app-container">
+    <!-- Header -->
+    <header>
+        <div class="logo-section">
+            <h1><i data-lucide="sun" class="logo-icon"></i> HelioForecast</h1>
+        </div>
+        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Dark/Light Mode">
+            <i data-lucide="moon" id="theme-icon"></i>
+        </button>
+    </header>
 
-<h1>☀ Solar Power Generation Prediction</h1>
+    <!-- Main Grid Layout -->
+    <div class="dashboard-grid">
+        
+        <!-- Left Column: Prediction Form & Weather Fetcher -->
+        <div class="glass-card">
+            <div class="card-header">
+                <h2><i data-lucide="sliders"></i> Predictor Controls</h2>
+                <span style="font-size: 12px; font-weight: 500; opacity: 0.8;">Model: XGBoost Regressor</span>
+            </div>
+            
+            <div class="card-body">
+                <!-- Location Auto-fill Section -->
+                <div class="search-container">
+                    <div class="search-input-wrapper">
+                        <i data-lucide="map-pin"></i>
+                        <input type="text" id="location-search" class="search-input" placeholder="Enter city name (e.g. London, Bhopal)...">
+                    </div>
+                    <button type="button" id="fetch-weather-btn" class="btn btn-primary">
+                        <i data-lucide="cloud-lightning"></i>
+                        <span>Autofill Weather</span>
+                        <div id="weather-spinner" class="spinner hidden"></div>
+                    </button>
+                </div>
 
-<form action="/predict" method="POST">
+                <!-- Form for Inputs -->
+                <form id="prediction-form">
+                    <!-- Hidden field to pass resolved location name -->
+                    <input type="hidden" name="location_name" id="location-name-hidden" value="Manual Input">
+                    
+                    <div class="inputs-grid">
+                        
+                        <!-- Angle of Incidence -->
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <i data-lucide="orbit"></i>
+                                <span>Angle of Incidence (°)</span>
+                                <div class="tooltip-container">
+                                    <i data-lucide="info"></i>
+                                    <div class="tooltip-text">
+                                        Angle between the sun's rays and the perpendicular to the panel. Lower values = more direct solar energy.<br><br>
+                                        <strong>Typical Range:</strong> 3° - 120°
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="number" step="any" name="angle_of_incidence" id="angle_of_incidence" class="input-box" placeholder="e.g. 50.8" required>
+                        </div>
 
-{% for feature in feature_names %}
+                        <!-- Total Cloud Cover -->
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <i data-lucide="cloud"></i>
+                                <span>Total Cloud Cover (%)</span>
+                                <div class="tooltip-container">
+                                    <i data-lucide="info"></i>
+                                    <div class="tooltip-text">
+                                        Percentage of the sky obscured by clouds. Higher cloud cover decreases solar radiation.<br><br>
+                                        <strong>Typical Range:</strong> 0% - 100%
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="number" step="any" name="total_cloud_cover_sfc" id="total_cloud_cover_sfc" class="input-box" placeholder="e.g. 34.0" required>
+                        </div>
 
-<div class="input-box">
+                        <!-- Zenith Angle -->
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <i data-lucide="sun-dim"></i>
+                                <span>Solar Zenith Angle (°)</span>
+                                <div class="tooltip-container">
+                                    <i data-lucide="info"></i>
+                                    <div class="tooltip-text">
+                                        The angle between the sun and the vertical overhead direction. 0° means directly overhead; 90° means sun on the horizon.<br><br>
+                                        <strong>Typical Range:</strong> 17° - 128°
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="number" step="any" name="zenith" id="zenith" class="input-box" placeholder="e.g. 60.0" required>
+                        </div>
 
-<label>{{ feature }}</label>
+                        <!-- Azimuth Angle -->
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <i data-lucide="compass"></i>
+                                <span>Solar Azimuth Angle (°)</span>
+                                <div class="tooltip-container">
+                                    <i data-lucide="info"></i>
+                                    <div class="tooltip-text">
+                                        The direction of the sun measured clockwise from North (North = 0°, East = 90°, South = 180°, West = 270°).<br><br>
+                                        <strong>Typical Range:</strong> 54° - 289°
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="number" step="any" name="azimuth" id="azimuth" class="input-box" placeholder="e.g. 169.1" required>
+                        </div>
 
-<input
-type="number"
-step="any"
-name="{{ feature }}"
-placeholder="Enter {{ feature }}"
-required>
+                        <!-- Shortwave Radiation -->
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <i data-lucide="sun"></i>
+                                <span>Shortwave Radiation (W/m²)</span>
+                                <div class="tooltip-container">
+                                    <i data-lucide="info"></i>
+                                    <div class="tooltip-text">
+                                        Incoming solar shortwave energy at the surface. Higher radiation means significantly more electrical power.<br><br>
+                                        <strong>Typical Range:</strong> 0 - 950 W/m²
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="number" step="any" name="shortwave_radiation_backwards_sfc" id="shortwave_radiation_backwards_sfc" class="input-box" placeholder="e.g. 387.7" required>
+                        </div>
 
+                        <!-- Total Precipitation -->
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <i data-lucide="cloud-rain"></i>
+                                <span>Total Precipitation (mm)</span>
+                                <div class="tooltip-container">
+                                    <i data-lucide="info"></i>
+                                    <div class="tooltip-text">
+                                        Depth of liquid precipitation at the surface (rain or snow equivalent). Rain blocks sunlight and dampens panel efficiency.<br><br>
+                                        <strong>Typical Range:</strong> 0 - 3.5 mm
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="number" step="any" name="total_precipitation_sfc" id="total_precipitation_sfc" class="input-box" placeholder="e.g. 0.0" required>
+                        </div>
+
+                        <!-- Low Cloud Cover -->
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <i data-lucide="cloud-fog"></i>
+                                <span>Low Cloud Cover (%)</span>
+                                <div class="tooltip-container">
+                                    <i data-lucide="info"></i>
+                                    <div class="tooltip-text">
+                                        Sky coverage percentage of low-altitude clouds (below 2 km). Low clouds block sunlight much more than high clouds.<br><br>
+                                        <strong>Typical Range:</strong> 0% - 100%
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="number" step="any" name="low_cloud_cover_low_cld_lay" id="low_cloud_cover_low_cld_lay" class="input-box" placeholder="e.g. 21.3" required>
+                        </div>
+
+                        <!-- Wind Gust -->
+                        <div class="input-wrapper">
+                            <div class="label-row">
+                                <i data-lucide="wind"></i>
+                                <span>Wind Gust (km/h)</span>
+                                <div class="tooltip-container">
+                                    <i data-lucide="info"></i>
+                                    <div class="tooltip-text">
+                                        Sudden peak wind speeds at 10m height. High winds can cool panels, preventing thermal efficiency drops.<br><br>
+                                        <strong>Typical Range:</strong> 0.7 - 85 km/h
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="number" step="any" name="wind_gust_10_m_above_gnd" id="wind_gust_10_m_above_gnd" class="input-box" placeholder="e.g. 20.5" required>
+                        </div>
+
+                        <!-- Predict Button wrapper -->
+                        <div class="predict-btn-wrapper">
+                            <button type="submit" id="predict-btn" class="btn btn-accent btn-block">
+                                <i data-lucide="zap"></i>
+                                <span>Generate Prediction</span>
+                                <div id="predict-spinner" class="spinner hidden"></div>
+                            </button>
+                        </div>
+
+                    </div>
+                </form>
+
+                <!-- Prediction Result Display -->
+                <div id="result-display" class="result-card hidden">
+                    <span id="result-place" class="result-location">MANUAL INPUT</span>
+                    <div class="result-value-row">
+                        <span id="result-value" class="result-number">0.00</span>
+                        <span class="result-unit">kW</span>
+                    </div>
+                    <div class="gauge-container">
+                        <div id="result-gauge" class="gauge-fill"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Right Column: Interactive Dashboard & History Log -->
+        <div class="glass-card">
+            <div class="card-header">
+                <h2><i data-lucide="bar-chart-3"></i> Historical Analysis</h2>
+                <button type="button" id="clear-history-btn" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">
+                    <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i> Clear History
+                </button>
+            </div>
+            
+            <div class="card-body" style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- Historical Trend Chart -->
+                <div class="chart-wrapper">
+                    <canvas id="historyChart"></canvas>
+                </div>
+                
+                <!-- History Items List -->
+                <div>
+                    <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="history" style="color: var(--accent); width: 18px; height: 18px;"></i> Recent Predictions
+                    </h3>
+                    <div id="history-items-container" class="history-list">
+                        <div class="empty-history">No predictions logged yet.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>
 
-{% endfor %}
+<!-- Lucide Icons Library -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
 
-<button type="submit">
+    // Theme Toggle Logic
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    
+    // Check saved theme or system preference
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
 
-Predict
+    themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        updateThemeIcon(newTheme);
+        // Re-render chart if it exists to match colors
+        if (historyChart) {
+            updateChartTheme(newTheme);
+        }
+    });
 
-</button>
+    function updateThemeIcon(theme) {
+        if (theme === 'light') {
+            themeIcon.setAttribute('data-lucide', 'sun');
+        } else {
+            themeIcon.setAttribute('data-lucide', 'moon');
+        }
+        lucide.createIcons();
+    }
 
-</form>
+    // Weather API Autofill Logic
+    const locationSearch = document.getElementById('location-search');
+    const fetchWeatherBtn = document.getElementById('fetch-weather-btn');
+    const weatherSpinner = document.getElementById('weather-spinner');
+    const locationNameHidden = document.getElementById('location-name-hidden');
 
-{% if prediction_text %}
+    fetchWeatherBtn.addEventListener('click', async () => {
+        const query = locationSearch.value.trim();
+        if (!query) {
+            alert('Please enter a location name first.');
+            return;
+        }
 
-<h2>{{ prediction_text }}</h2>
+        // Show loading state
+        weatherSpinner.classList.remove('hidden');
+        fetchWeatherBtn.disabled = true;
 
-{% endif %}
+        try {
+            const response = await fetch(`/fetch-weather?location=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Populate inputs
+                document.getElementById('angle_of_incidence').value = data.angle_of_incidence;
+                document.getElementById('total_cloud_cover_sfc').value = data.total_cloud_cover_sfc;
+                document.getElementById('zenith').value = data.zenith;
+                document.getElementById('azimuth').value = data.azimuth;
+                document.getElementById('shortwave_radiation_backwards_sfc').value = data.shortwave_radiation_backwards_sfc;
+                document.getElementById('total_precipitation_sfc').value = data.total_precipitation_sfc;
+                document.getElementById('low_cloud_cover_low_cld_lay').value = data.low_cloud_cover_low_cld_lay;
+                document.getElementById('wind_gust_10_m_above_gnd').value = data.wind_gust_10_m_above_gnd;
 
-</div>
+                // Save location metadata
+                locationNameHidden.value = data.location_name;
+                locationSearch.value = data.location_name; // Set to full geocoded name
+            } else {
+                alert(`Error: ${data.error}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Failed to fetch weather details. Please try again.');
+        } finally {
+            weatherSpinner.classList.add('hidden');
+            fetchWeatherBtn.disabled = false;
+        }
+    });
+
+    // Also fetch on search input pressing Enter
+    locationSearch.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            fetchWeatherBtn.click();
+        }
+    });
+
+    // Prediction Form Submission (AJAX)
+    const predictionForm = document.getElementById('prediction-form');
+    const predictBtn = document.getElementById('predict-btn');
+    const predictSpinner = document.getElementById('predict-spinner');
+    const resultDisplay = document.getElementById('result-display');
+    const resultPlace = document.getElementById('result-place');
+    const resultValue = document.getElementById('result-value');
+    const resultGauge = document.getElementById('result-gauge');
+
+    predictionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Show loading state
+        predictSpinner.classList.remove('hidden');
+        predictBtn.disabled = true;
+
+        const formData = new FormData(predictionForm);
+
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                // Update Prediction Card
+                resultPlace.innerText = data.location.toUpperCase();
+                resultValue.innerText = data.prediction.toFixed(2);
+                resultDisplay.classList.remove('hidden');
+
+                // Update Gauge (Max limit approx 3056 kW based on dataset)
+                const percentage = Math.min(100, (data.prediction / 3056) * 100);
+                resultGauge.style.width = `${percentage}%`;
+
+                // Reload History Chart & List
+                await loadHistory();
+            } else {
+                alert(`Error: ${data.error}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Prediction request failed.');
+        } finally {
+            predictSpinner.classList.add('hidden');
+            predictBtn.disabled = false;
+        }
+    });
+
+    // Chart.js Setup & History Loading
+    const ctx = document.getElementById('historyChart').getContext('2d');
+    let historyChart;
+
+    function getChartThemeColors() {
+        const theme = document.documentElement.getAttribute('data-theme');
+        const isDark = theme === 'dark';
+        return {
+            grid: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)',
+            text: isDark ? '#94a3b8' : '#475569',
+            line: '#fbbf24',
+            lineFill: isDark ? 'rgba(251, 191, 36, 0.05)' : 'rgba(217, 119, 6, 0.05)'
+        };
+    }
+
+    function initChart(dataPoints) {
+        const colors = getChartThemeColors();
+        
+        // Take latest 10 items and reverse to show chronological order
+        const chartItems = [...dataPoints].slice(0, 10).reverse();
+        const labels = chartItems.map(item => {
+            const parts = item.timestamp.split(' ');
+            return parts[1]; // just return HH:MM:SS
+        });
+        const values = chartItems.map(item => item.prediction);
+
+        if (historyChart) {
+            historyChart.destroy();
+        }
+
+        historyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Solar Output Trend (kW)',
+                    data: values,
+                    borderColor: colors.line,
+                    backgroundColor: colors.lineFill,
+                    borderWidth: 3,
+                    tension: 0.35,
+                    fill: true,
+                    pointBackgroundColor: colors.line,
+                    pointBorderColor: '#fff',
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Predicted Power: ${context.parsed.y} kW`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            color: colors.grid
+                        },
+                        ticks: {
+                            color: colors.text,
+                            font: {
+                                family: 'Outfit'
+                            }
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: colors.grid
+                        },
+                        ticks: {
+                            color: colors.text,
+                            font: {
+                                family: 'Outfit'
+                            }
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    function updateChartTheme(theme) {
+        const colors = getChartThemeColors();
+        if (historyChart) {
+            historyChart.options.scales.x.grid.color = colors.grid;
+            historyChart.options.scales.y.grid.color = colors.grid;
+            historyChart.options.scales.x.ticks.color = colors.text;
+            historyChart.options.scales.y.ticks.color = colors.text;
+            historyChart.data.datasets[0].backgroundColor = colors.lineFill;
+            historyChart.update();
+        }
+    }
+
+    const historyItemsContainer = document.getElementById('history-items-container');
+
+    async function loadHistory() {
+        try {
+            const response = await fetch('/history');
+            const data = await response.json();
+            
+            // Redraw Chart
+            initChart(data);
+
+            // Populate List
+            if (data.length === 0) {
+                historyItemsContainer.innerHTML = '<div class="empty-history">No predictions logged yet.</div>';
+                return;
+            }
+
+            let html = '';
+            data.forEach(item => {
+                html += `
+                    <div class="history-item">
+                        <div class="history-details">
+                            <span class="history-place">${item.location}</span>
+                            <span class="history-time">${item.timestamp}</span>
+                        </div>
+                        <span class="history-value">${item.prediction.toFixed(2)} kW</span>
+                    </div>
+                `;
+            });
+            historyItemsContainer.innerHTML = html;
+
+        } catch (err) {
+            console.error('Error loading history:', err);
+        }
+    }
+
+    // Clear History Logic
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
+    clearHistoryBtn.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to clear your prediction history?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/clear-history', { method: 'POST' });
+            if (response.ok) {
+                resultDisplay.classList.add('hidden');
+                locationNameHidden.value = 'Manual Input';
+                locationSearch.value = '';
+                await loadHistory();
+            } else {
+                alert('Failed to clear history.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error clearing history.');
+        }
+    });
+
+    // Initial Load of History on Page Start
+    window.addEventListener('load', loadHistory);
+</script>
 
 </body>
-
 </html>
